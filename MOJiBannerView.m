@@ -391,11 +391,16 @@ static NSTimer * bannerTimer;
 
 // 一张图的宽度
 - (CGFloat)bannerWidth {
+    // 刚进入的时候frame为zero
+    if (self.frame.size.width == 0) {
+        return MOJiBannerViewDefauleImageWidth;
+    }
+    
     // 这里按照iPhone12 Pro Max最大屏幕宽度428来计算，超过即视为横屏
-    if (ScreenWidth > MOJiBannerViewForVerticalScreen) {
+    if (self.frame.size.width > MOJiBannerViewForVerticalScreen) {
         return MOJiBannerViewDefauleImageWidth;
     } else {
-        return ScreenWidth - 2 * self.config.imageMargin;
+        return self.frame.size.width - 2 * self.config.imageMargin;
     }
 }
 

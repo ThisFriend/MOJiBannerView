@@ -127,6 +127,11 @@ static NSTimer * bannerTimer;
         make.height.mas_equalTo(self.config.imageHeight);
     }];
     
+    if (self.dataArray.count > 1) {
+        self.mainScrollView.contentSize = CGSizeMake(self.dataArray.count * self.bannerWidthWithSpacing - self.config.imageSpacing, self.bannerHeight);
+    } else {
+        self.mainScrollView.contentSize = CGSizeMake(self.bannerWidth, self.bannerHeight);
+    }
     
     if (!self.config.hidePageContol && self.dataArray.count > 1) {
         self.pageControl = [[MOJiBannerPageControl alloc] init];
@@ -181,6 +186,7 @@ static NSTimer * bannerTimer;
         imgV.layer.cornerRadius     = self.config.cornerRadius;
         imgV.layer.masksToBounds    = YES;
         imgV.userInteractionEnabled = YES;
+        imgV.tag                    = i % self.dataCount;
         
         UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(tapAction:)];
         [imgV addGestureRecognizer:tap];
@@ -190,7 +196,7 @@ static NSTimer * bannerTimer;
         id dataInfo = [self.dataArray objectAtIndex:i];
         if ([dataInfo isKindOfClass:[NSString class]]) {
             NSString *str = [self.dataArray objectAtIndex:i];
-            [imgV sd_setImageWithURL:[NSURL URLWithString:str] placeholderImage:MDUIUtils.placeholderImage];
+            [imgV moji_setImageWithURL:[NSURL URLWithString:str] placeholderImage:MDUIUtils.placeholderImage];
         } else {
             UIImage *image = [self.dataArray objectAtIndex:i];
             imgV.image     = image;
@@ -226,7 +232,7 @@ static NSTimer * bannerTimer;
 // 点击图片触发的手势方法
 - (void)tapAction:(UITapGestureRecognizer *)tap {
     if ([self.delegate respondsToSelector:@selector(selectBannerView:currentPage:)]) {
-        [self.delegate selectBannerView:self currentPage:self.currentPage];
+        [self.delegate selectBannerView:self currentPage:tap.view.tag];
     }
 }
 
@@ -283,7 +289,7 @@ static NSTimer * bannerTimer;
         wSelf.currentPage                  = currentPage;
         wSelf.pageControl.currentPage      = currentPage;
     } completion:^(BOOL finished) {
-        wSelf.mainScrollView.contentOffset = CGPointMake(self.startingOffsetXOfTheDisplayGroup + currentPage * wSelf.bannerWidthWithSpacing, 0);
+        wSelf.mainScrollView.contentOffset = CGPointMake(wSelf.startingOffsetXOfTheDisplayGroup + currentPage * wSelf.bannerWidthWithSpacing, 0);
     }];
     
 }
@@ -323,9 +329,9 @@ static NSTimer * bannerTimer;
 - (void)timerFunctiontion:(NSTimer *)timer {
     
     // 获取当前图片的位置
-    CGFloat currentX = self.mainScrollView.contentOffset.x;
+    CGFloat currentX        = self.mainScrollView.contentOffset.x;
     // 获取下一张图片的位置
-    CGFloat nextX = currentX + self.bannerWidthWithSpacing;
+    CGFloat nextX           = currentX + self.bannerWidthWithSpacing;
     // 获取显示组后第一张图片的位置
     CGFloat lastGroupFirstX = (self.dataGroupNum / 2 + 1) * self.oneGroupWidth;
     
@@ -365,12 +371,6 @@ static NSTimer * bannerTimer;
         _mainScrollView.showsVerticalScrollIndicator   = NO;
         _mainScrollView.showsHorizontalScrollIndicator = NO;
         _mainScrollView.clipsToBounds = NO;
-        
-        if (self.dataArray.count > 1) {
-            _mainScrollView.contentSize = CGSizeMake(self.dataArray.count * self.bannerWidthWithSpacing - self.config.imageSpacing, self.bannerHeight);
-        } else {
-            _mainScrollView.contentSize = CGSizeMake(self.bannerWidth, self.bannerHeight);
-        }
     }
     return _mainScrollView;
 }
@@ -437,7 +437,7 @@ static NSTimer * bannerTimer;
     return self.dataCount * self.bannerWidthWithSpacing;
 }
 
-// 用于显示的一组图片的起始位置
+// 用于显示的一组图片的起始位置，方便计算
 - (CGFloat)startingOffsetXOfTheDisplayGroup {
     return (self.dataGroupNum - 1 ) / 2 * self.oneGroupWidth;
 }

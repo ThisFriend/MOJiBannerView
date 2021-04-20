@@ -8,7 +8,6 @@
 
 #import "MOJiBannerView.h"
 #import "MOJiBannerPageControl.h"
-#import "UIImageView+WebCache.h"
 
 static CGFloat const MOJiBannerViewDefauleImageWidth     = 343; // 按照设计稿大小的默认宽度
 static CGFloat const MOJiBannerViewDefaultImageHeight    = 148; // 按照设计稿大小的默认高度
@@ -21,7 +20,7 @@ static CGFloat const MOJiBannerViewDefaultPageTopToImage = 6;   // pageControl�
 /**
  定时器 用来自动播放图片
  */
-static NSTimer * bannerTimer;
+static NSTimer *bannerTimer;
 
 @interface MOJiBannerView () <UIScrollViewDelegate>
 
@@ -113,7 +112,7 @@ static NSTimer * bannerTimer;
 }
 
 - (void)configViews {
-    self.contentV = UIView.new;
+    self.contentV = [[UIView alloc] init];
     [self addSubview:self.contentV];
     [self.contentV mas_makeConstraints:^(MASConstraintMaker *make) {
         make.edges.mas_equalTo(self);
@@ -133,7 +132,7 @@ static NSTimer * bannerTimer;
         self.mainScrollView.contentSize = CGSizeMake(self.bannerWidth, self.bannerHeight);
     }
     
-    if (!self.config.hidePageContol && self.dataArray.count > 1) {
+    if (!self.config.pageControlHidden && self.dataArray.count > 1) {
         self.pageControl = [[MOJiBannerPageControl alloc] init];
         [self.contentV addSubview:self.pageControl];
         [self pageControlDidRemakeConstraints];
@@ -154,15 +153,16 @@ static NSTimer * bannerTimer;
     self.config.imageSpacing        = self.config.imageSpacing ?: self.defaultConfig.imageSpacing;
     self.config.cornerRadius        = self.config.cornerRadius ?: self.defaultConfig.cornerRadius;
     self.config.timeInterval        = self.config.timeInterval ?: self.defaultConfig.timeInterval;
-    self.config.hidePageContol      = self.config.hidePageContol ?: self.defaultConfig.hidePageContol;
+    self.config.pageControlHidden   = self.config.pageControlHidden ?: self.defaultConfig.pageControlHidden;
     self.config.pageSelectColor     = self.config.pageSelectColor ?: self.defaultConfig.pageSelectColor;
     self.config.pageDefaultColor    = self.config.pageDefaultColor ?: self.defaultConfig.pageDefaultColor;
 }
 
 - (void)configBannerArr:(NSArray *)arr {
     self.dataCount = arr.count;
+    
     if (self && arr.count > 1) {
-        self.dataArray = NSMutableArray.array;
+        self.dataArray = [NSMutableArray array];
         /**
          前后各加一组数据，防止横屏的情况下，因为图片大小的原因，最左和最右部分显示空白。
          注意：在图片个数非常少，且图片宽度不够的情况下，还是会造成此问题
@@ -180,20 +180,20 @@ static NSTimer * bannerTimer;
 - (void)refreshTheData {
     UIImageView *lastImgV = nil;
     for (NSInteger i = 0; i < self.dataArray.count; i ++) {
-        UIImageView *imgV           = UIImageView.new;
+        UIImageView *imgV           = [[UIImageView alloc] init];
         imgV.contentMode            = UIViewContentModeScaleAspectFill;
         imgV.clipsToBounds          = YES;
         imgV.layer.cornerRadius     = self.config.cornerRadius;
         imgV.layer.masksToBounds    = YES;
         imgV.userInteractionEnabled = YES;
         imgV.tag                    = i % self.dataCount;
+        [self.mainScrollView addSubview:imgV];
         
         UITapGestureRecognizer *tap = [[UITapGestureRecognizer alloc]initWithTarget:self action:@selector(tapAction:)];
         [imgV addGestureRecognizer:tap];
         
-        [self.mainScrollView addSubview:imgV];
-        
         id dataInfo = [self.dataArray objectAtIndex:i];
+        
         if ([dataInfo isKindOfClass:[NSString class]]) {
             NSString *str = [self.dataArray objectAtIndex:i];
             [imgV moji_setImageWithURL:[NSURL URLWithString:str] placeholderImage:MDUIUtils.placeholderImage];
@@ -204,13 +204,16 @@ static NSTimer * bannerTimer;
         
         [imgV mas_makeConstraints:^(MASConstraintMaker *make) {
             make.top.mas_equalTo(self.mainScrollView);
+            
             if (lastImgV) {
                 make.left.mas_equalTo(lastImgV.mas_right).offset(self.config.imageSpacing);
             } else {
                 make.left.mas_equalTo(self.mainScrollView);
             }
+            
             make.size.mas_equalTo(CGSizeMake(self.bannerWidth, self.bannerHeight));
         }];
+        
         lastImgV = imgV;
     }
 }
@@ -224,15 +227,15 @@ static NSTimer * bannerTimer;
 - (void)pageControlDidRemakeConstraints {
     [self.pageControl mas_makeConstraints:^(MASConstraintMaker *make) {
         self.cons_pageControlTopToBannerBottom = make.top.mas_equalTo(self.mainScrollView.mas_bottom).offset(MOJiBannerViewDefaultPageTopToImage);
-        self.cons_pageControlToCenterX = make.centerX.width.mas_equalTo(self.contentV);
-        self.cons_pageControlHeight = make.height.mas_equalTo(MOJiBannerPageControl.pageControlHeight);
+        self.cons_pageControlToCenterX         = make.centerX.width.mas_equalTo(self.contentV);
+        self.cons_pageControlHeight            = make.height.mas_equalTo(MOJiBannerPageControl.pageControlHeight);
     }];
 }
 
 // 点击图片触发的手势方法
 - (void)tapAction:(UITapGestureRecognizer *)tap {
-    if ([self.delegate respondsToSelector:@selector(selectBannerView:currentPage:)]) {
-        [self.delegate selectBannerView:self currentPage:tap.view.tag];
+    if ([self.delegate respondsToSelector:@selector(bannerView:didSelectItemAtPage:)]) {
+        [self.delegate bannerView:self didSelectItemAtPage:tap.view.tag];
     }
 }
 
@@ -283,7 +286,7 @@ static NSTimer * bannerTimer;
     //获取当前应该展示的内容下标
     NSInteger currentPage = [self getCurrentPageWithOffsetX:currentPointX];
     
-    WEAKSELF
+    __weak typeof(self) wSelf = self;
     [UIView animateWithDuration:0.2 animations:^{
         wSelf.mainScrollView.contentOffset = CGPointMake(nearbyNum * wSelf.bannerWidthWithSpacing, 0);
         wSelf.currentPage                  = currentPage;
@@ -291,13 +294,13 @@ static NSTimer * bannerTimer;
     } completion:^(BOOL finished) {
         wSelf.mainScrollView.contentOffset = CGPointMake(wSelf.startingOffsetXOfTheDisplayGroup + currentPage * wSelf.bannerWidthWithSpacing, 0);
     }];
-    
 }
 
 #pragma mark - timer
 // 初始化定时器
 - (void)addTimer {
     if (self.dataArray.count < 2) return;
+    
     [self stopTimer];
     
     //初始化定时器 时间戳:X秒 目标:本类 方法选择器:timerFunction 用户信息:nil 是否循环:yes
@@ -335,7 +338,7 @@ static NSTimer * bannerTimer;
     // 获取显示组后第一张图片的位置
     CGFloat lastGroupFirstX = (self.dataGroupNum / 2 + 1) * self.oneGroupWidth;
     
-    WEAKSELF
+    __weak typeof(self) wSelf = self;
     //如果滚动视图上将要显示的下一张图片是第一张时
     if (nextX == lastGroupFirstX) {
         [UIView animateWithDuration:0.2 animations:^{
@@ -364,28 +367,29 @@ static NSTimer * bannerTimer;
 #pragma mark - setter/getter
 - (UIScrollView *)mainScrollView {
     if (!_mainScrollView) {
-        _mainScrollView               = UIScrollView.new;
-        _mainScrollView.delegate      = self;
-        _mainScrollView.scrollEnabled = YES;
-        _mainScrollView.bounces       = NO;
+        _mainScrollView = [[UIScrollView alloc] init];
+        _mainScrollView.delegate                       = self;
+        _mainScrollView.scrollEnabled                  = YES;
+        _mainScrollView.bounces                        = NO;
         _mainScrollView.showsVerticalScrollIndicator   = NO;
         _mainScrollView.showsHorizontalScrollIndicator = NO;
-        _mainScrollView.clipsToBounds = NO;
+        _mainScrollView.clipsToBounds                  = NO;
     }
     return _mainScrollView;
 }
 
 - (MOJiBannerConfig *)defaultConfig {
-    MOJiBannerConfig *defaultConfig = MOJiBannerConfig.new;
+    MOJiBannerConfig *defaultConfig = [[MOJiBannerConfig alloc] init];
     defaultConfig.imageHeight       = MOJiBannerViewDefaultImageHeight;
     defaultConfig.imageMargin       = 16;
     defaultConfig.imageSpacing      = 8;
     defaultConfig.timeInterval      = 4;
     defaultConfig.cornerRadius      = 8;
     
-    defaultConfig.hidePageContol    = NO;
-    defaultConfig.pageSelectColor   = UIColorFromRGB(0xFF4E4E);
-    defaultConfig.pageDefaultColor  = UIColorFromRGB(0xD8D8D8);
+    defaultConfig.pageControlHidden = NO;
+    defaultConfig.pageSelectColor   = UIColorFromHEX(0xFF4E4E);
+    defaultConfig.pageDefaultColor  = UIColorFromHEX(0xD8D8D8);
+    
     return defaultConfig;
 }
 

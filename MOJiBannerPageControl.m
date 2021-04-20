@@ -29,7 +29,7 @@ static CGFloat const MOJiCarouselPageControlIndicatorH         = 3.0;
 }
 
 - (void)configViews {
-    self.contentV = UIView.new;
+    self.contentV = [[UIView alloc] init];
     [self addSubview:self.contentV];
     
     [self.contentV mas_makeConstraints:^(MASConstraintMaker *make) {
@@ -119,6 +119,7 @@ static CGFloat const MOJiCarouselPageControlIndicatorH         = 3.0;
             } else {
                 make.left.mas_equalTo(lastBtn.mas_right).offset(MOJiCarouselPageControlSpace);
             }
+            
             if (i == self.currentPage) {
                 make.size.mas_equalTo(CGSizeMake(MOJiCarouselPageControlSelectedIndicatorW, MOJiCarouselPageControlIndicatorH));
             } else {
@@ -165,7 +166,7 @@ static CGFloat const MOJiCarouselPageControlIndicatorH         = 3.0;
 }
 
 - (UIButton *)createPageIndicator {
-    UIButton *pageIndicator              = UIButton.new;
+    UIButton *pageIndicator              = [[UIButton alloc] init];
     pageIndicator.userInteractionEnabled = NO;
     return pageIndicator;
 }
